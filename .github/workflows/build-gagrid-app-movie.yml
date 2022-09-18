@@ -1,0 +1,45 @@
+name: gagrid-app-movie
+'on':
+  workflow_dispatch: null
+  push:
+    branches:
+      - master  
+env:
+   DOCKER_USER: ${{  secrets.DOCKER_USERNAME }}
+   DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}    
+   PROJECT_NAME: ${{ github.event.repository.name }} 
+jobs:
+  package:
+    name: Build 
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Set up JDK
+        uses: actions/setup-java@v1
+        with:
+          java-version: '8'
+      - name: maven-settings-xml-action
+        uses: whelk-io/maven-settings-xml-action@v20
+        with:
+          repositories: >-
+            [{ "id": "github", "name": "netmille", "url":
+            "https://maven.pkg.github.com/netmille/gagrid-services-movie" }, { "id": "github", "name": "netmille", "url":
+            "https://maven.pkg.github.com/netmille/gagrid-services-movie" }]
+          servers: >-
+            [{ "id": "github", "username": "netmille", "password": "${{ secrets.MY_TOKEN }}" } ]
+      - name: View settings.xml
+        run: cat ~/.m2/settings.xml
+      - name: package
+        run: mvn -DskipTests=true package
+      - name: Extract Maven project version
+        run: echo ::set-output name=version::$(mvn -q -Dexec.executable=echo -Dexec.args='${project.version}' --non-recursive exec:exec)
+        id: project
+
+      - name: Show extracted Maven project version
+        run: echo ${{ steps.project.outputs.version }}
+      - name: Login to Docker
+        run: docker login -u $DOCKER_USER -p $DOCKER_PASSWORD 
+      - name: Build Docker Image
+        run: docker build -t netmille/$PROJECT_NAME:${{ steps.project.outputs.version }} .
+      - name: Push Docker Image
+        run: docker push netmille/$PROJECT_NAME:${{ steps.project.outputs.version }} 

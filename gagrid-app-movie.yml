@@ -1,0 +1,34 @@
+services:
+  ignite-gagrid-service:
+    image:  netmille/ignite-gagrid:2.12.0_0.1.0-beta
+    environment:
+     - "IGNITE_QUIET=false"
+    networks: 
+      - movie-network
+  gagrid-app-movie-service:
+    image: netmille/gagrid-app-movie:0.1.0-beta
+    environment:
+     - "IGNITE_QUIET=false"
+     - "GENRE=Action,Western,Romance"
+     - "URL=jdbc:postgresql://gagrid-db-movie-service:5432/gagrid-movie"
+     - "USERNAME=gagrid-movie"
+     - "PASSWORD=gagrid-movie"
+    depends_on:
+       gagrid-db-movie-service:
+          condition: service_healthy
+    networks: 
+      - movie-network 
+  gagrid-db-movie-service:
+     image: netmille/gagrid-db-movie
+     environment:
+       - "PGDATA=gagrid-db-movie-data"
+     healthcheck:
+         test: ["CMD-SHELL", "pg_isready"]
+         interval: 30s
+         timeout: 30s
+         retries: 3
+     networks: 
+      - movie-network 
+networks:
+   movie-network : {}
+ 
